@@ -31,7 +31,13 @@ To use the LLM-powered conversion feature, you need a Gemini API key:
 2. **Set up environment variables:**
    Create a `.env` file in the project root:
    ```bash
+   # Gemini API Configuration
+   GEMINI_API_URL=https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent
    GEMINI_API_KEY=your_actual_api_key_here
+   
+   # Flask Configuration (optional)
+   FLASK_ENV=development
+   FLASK_DEBUG=True
    ```
 
    **Note:** Replace `your_actual_api_key_here` with your actual Gemini API key.

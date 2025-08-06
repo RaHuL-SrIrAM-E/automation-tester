@@ -9,6 +9,7 @@ class Config:
     
     # Gemini API Configuration
     GEMINI_API_KEY = os.getenv('GEMINI_API_KEY')
+    GEMINI_API_URL = os.getenv('GEMINI_API_URL', 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent')
     
     # Flask Configuration
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-secret-key-change-in-production')
@@ -21,4 +22,6 @@ class Config:
     def validate_config():
         """Validate that required configuration is present"""
         if not Config.GEMINI_API_KEY:
-            raise ValueError("GEMINI_API_KEY environment variable is required") 
+            raise ValueError("GEMINI_API_KEY environment variable is required")
+        if not Config.GEMINI_API_URL:
+            raise ValueError("GEMINI_API_URL environment variable is required") 

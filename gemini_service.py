@@ -1,4 +1,4 @@
-import google.generativeai as genai
+import requests
 import json
 import logging
 from config import Config
@@ -6,15 +6,18 @@ from config import Config
 logger = logging.getLogger(__name__)
 
 class GeminiService:
-    """Service class for interacting with Gemini LLM"""
+    """Service class for interacting with Gemini LLM via REST API"""
     
     def __init__(self):
-        """Initialize Gemini service with API key"""
+        """Initialize Gemini service with API key and URL"""
         if not Config.GEMINI_API_KEY:
             raise ValueError("GEMINI_API_KEY is required")
         
-        genai.configure(api_key=Config.GEMINI_API_KEY)
-        self.model = genai.GenerativeModel('gemini-pro')
+        self.api_url = Config.GEMINI_API_URL
+        self.api_key = Config.GEMINI_API_KEY
+        self.headers = {
+            'Content-Type': 'application/json',
+        }
     
     def generate_karate_test_suite(self, postman_collection):
         """
@@ -35,10 +38,10 @@ class GeminiService:
             prompt = self._create_generation_prompt(postman_collection)
             
             # Generate response from Gemini
-            response = self.model.generate_content(prompt)
+            response = self._call_gemini_api(prompt)
             
             # Parse the response and extract generated files
-            karate_files = self._parse_gemini_response(response.text, collection_name)
+            karate_files = self._parse_gemini_response(response, collection_name)
             
             logger.info(f"Successfully generated Karate test suite for collection: {collection_name}")
             return karate_files
@@ -114,6 +117,60 @@ Make sure all generated code is syntactically correct and follows Karate convent
 """
         
         return prompt
+    
+    def _call_gemini_api(self, prompt):
+        """
+        Call Gemini API via REST endpoint
+        
+        Args:
+            prompt (str): The prompt to send to Gemini
+            
+        Returns:
+            str: Response text from Gemini
+        """
+        try:
+            # Prepare the request payload
+            payload = {
+                "contents": [
+                    {
+                        "parts": [
+                            {
+                                "text": prompt
+                            }
+                        ]
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": 0.7,
+                    "topK": 40,
+                    "topP": 0.95,
+                    "maxOutputTokens": 8192,
+                }
+            }
+            
+            # Make the API call
+            url = f"{self.api_url}?key={self.api_key}"
+            response = requests.post(url, headers=self.headers, json=payload)
+            
+            if response.status_code == 200:
+                response_data = response.json()
+                # Extract the generated text from the response
+                if 'candidates' in response_data and len(response_data['candidates']) > 0:
+                    candidate = response_data['candidates'][0]
+                    if 'content' in candidate and 'parts' in candidate['content']:
+                        parts = candidate['content']['parts']
+                        if len(parts) > 0 and 'text' in parts[0]:
+                            return parts[0]['text']
+                
+                logger.error("Unexpected response structure from Gemini API")
+                raise Exception("Invalid response structure from Gemini API")
+            else:
+                logger.error(f"Gemini API call failed with status {response.status_code}: {response.text}")
+                raise Exception(f"API call failed: {response.status_code}")
+                
+        except Exception as e:
+            logger.error(f"Error calling Gemini API: {str(e)}")
+            raise
     
     def _parse_gemini_response(self, response_text, collection_name):
         """
